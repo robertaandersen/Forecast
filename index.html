@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Veður</title>
+</head>
+
+<style>
+  .forecastContainer {
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+    background-color: rgb(255, 251, 251);
+  }
+
+  .chartContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .chartContainer button {
+    background-color: #04AA6D;
+    border: none;
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    font-size: 16px;
+    margin: 10px 10px;
+    width: 100px;
+    height: 40px;
+    display: grid;
+    align-content: center;
+  }
+
+  .chart {
+    width: 800px;
+    margin-top: 20px;
+  }
+
+  .chartContainer .navigation {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 20px;
+    width: auto
+  }
+
+  .textContainer,
+  .menue {
+    width: 700px;
+    align-self: center;
+    margin: 20px;
+  }
+</style>
+
+<body>
+  <script src="https://goessner.net/download/prj/jsonxml/xml2json.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <div class="forecastContainer">
+    <div class="menue">
+      <label for="stod">Veldu veðurstöð</label>
+      <select name="stod" id="stod" onchange="stationSelect()">
+        <option value="422">Akureyri</option>
+        <option value="5990">Neskaupstaður</option>
+        <option value="2642">Ísafjörður</option>
+        <option value="4118">Keflavík</option>
+        <option value="1" selected="selected">Reykjavík</option>
+        <option value="4013">Stykkishólmur</option>
+        <option value="6015">Vestmannaeyjar</option>
+      </select>
+    </div>
+    <div class="chartContainer">
+      <div class="chart">
+        <canvas id="hitiChart"></canvas>
+      </div>
+      <div class="chart">
+        <canvas id="windChart"></canvas>
+      </div>
+      <div class="navigation">
+        <button onclick="fastForward(-1)">-</button>
+        <h3 id="dagur"></h3>
+        <button onclick="fastForward(1)">+</button>
+      </div>
+    </div>
+    <div id="textDescription" class="textContainer"></div>
+  </div>
+
+  <script>
+    /////////////////////
+    // CONTROLLER - UI //
+    /////////////////////
+
+    // Initialize the chart objects
+    const heatCtx = document.getElementById('hitiChart');
+    var heatChart = new Chart(heatCtx, {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: `Hitastig`,
+          data: new Array(),
+          borderWidth: 2,
+          borderColor: '#04AA6D',
+          backgroundColor: '#04AA6D'
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            suggestedMax: 10,
+            suggestedMin: -5,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'right',
+          },
+        }
+      }
+    });
+
+    const windCtx = document.getElementById('windChart');
+    var windChart = new Chart(windCtx, {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: `Vindur`,
+          data: new Array(),
+          borderWidth: 2,
+          borderColor: '#04AA6D',
+          backgroundColor: '#04AA6D'
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            suggestedMax: 20,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'right',
+          },
+        }
+      }
+    });
+
+    var dayField = document.getElementById("dagur")
+
+    function RenderForecast(startAt) {
+      var casts = this.forecast[startAt];
+      this.heatChart.data.datasets[0].data = new Array();
+      this.windChart.data.datasets[0].data = new Array();
+      this.heatChart.data.labels = new Array();
+      this.windChart.data.labels = new Array();
+      casts.map((cast) => {
+        this.heatChart.data.labels.push(`${new Date(cast.ftime).toLocaleTimeString('is-IS', { hour: '2-digit' })}:00 - ${cast.W}`);
+        this.windChart.data.labels.push(`${new Date(cast.ftime).toLocaleTimeString('is-IS', { hour: '2-digit' })}:00 Vindátt: ${cast.D} `);
+        this.heatChart.data.datasets[0].data.push(cast.T);
+        this.windChart.data.datasets[0].data.push(cast.F);
+      });
+      this.heatChart.update();
+      this.windChart.update();
+
+      dayField.innerHTML = new Date(casts[0].ftime).toLocaleDateString('is-IS', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    function stationSelect() {
+      var stationId = document.getElementById("stod").value;
+      loadForecast(stationId)
+    }
+
+    loadForecast('1')
+    loadTextForecast();
+    /////////////
+    // SERVIES //
+    /////////////
+
+    // placeholder for forcast
+    var station;
+    var forecast;
+
+    // Placeholder for navigation
+    var days;
+    var currentPos = 0;
+
+    function fastForward(step) {
+      if ((currentPos === 0 && step < 0) || currentPos === days.length - 1) {
+        return;
+      }
+      currentPos += step;
+      RenderForecast(days[currentPos]);
+    }
+
+    function loadForecast(station) {
+      fetchWeather(station, 'forec').then(newForecast => {
+        this.station = newForecast.forecasts.station.name;
+        this.forecast = new Array();
+        this.days = new Array();
+        this.currentPos = 0;
+        newForecast.forecasts.station.forecast.map((cast) => {
+          let forecastTime = new Date(cast.ftime);
+          if (this.forecast[forecastTime.getDate()] === undefined) {
+            this.forecast[forecastTime.getDate()] = new Array();
+            days.push(forecastTime.getDate());
+          }
+          if (forecastTime.getHours() === 0 || forecastTime.getHours() % 6 === 0) {
+            this.forecast[forecastTime.getDate()].push(cast)
+          }
+        });
+        RenderForecast(days[0]);
+      });
+    }
+
+    fetchWeather('5', 'txt').then(newForecast => document.getElementById("textDescription").innerHTML = `<h3>Veðurhorfur á landinu</h3> <br>${newForecast.texts["text"].content}`)
+    function loadTextForecast() {
+    }
+
+
+
+
+    ///////////
+    // 'API' //
+    ///////////
+    async function fetchWeather(station, type) {
+      const url = 'https://corsproxy.io/?' + encodeURIComponent(`https://xmlweather.vedur.is/?op_w=xml&type=${type}&lang=is&view=xml&ids=${station}`);
+      const response = await fetch(url);
+      const forecasts = await response.text();
+      const parsed = new window.DOMParser().parseFromString(forecasts, "text/xml")
+      return JSON.parse(xml2json(parsed, ""));
+    }
+
+
+  </script>
+</body>
+
+</html>
