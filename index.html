@@ -36,7 +36,7 @@
   }
 
   .chart {
-    width: 800px;
+    width: 900px;
     margin-top: 20px;
   }
 
@@ -49,10 +49,11 @@
   }
 
   .textContainer,
-  .menue {
+  .stod {
     width: 700px;
     align-self: center;
     margin: 20px;
+    font-size: 26px;
   }
 </style>
 
@@ -60,9 +61,8 @@
   <script src="https://goessner.net/download/prj/jsonxml/xml2json.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <div class="forecastContainer">
-    <div class="menue">
-      <label for="stod">Veldu veðurstöð</label>
-      <select name="stod" id="stod" onchange="stationSelect()">
+    <div>
+      <select class="stod" name="stod" id="stod" onchange="stationSelect()">
         <option value="422">Akureyri</option>
         <option value="5990">Neskaupstaður</option>
         <option value="2642">Ísafjörður</option>
@@ -94,66 +94,42 @@
     /////////////////////
 
     // Initialize the chart objects
+    Chart.defaults.font.size = 26;
     const heatCtx = document.getElementById('hitiChart');
-    var heatChart = new Chart(heatCtx, {
-      type: 'bar',
-      data: {
-        datasets: [{
-          label: `Hitastig`,
-          data: new Array(),
-          borderWidth: 2,
-          borderColor: '#04AA6D',
-          backgroundColor: '#04AA6D'
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            suggestedMax: 10,
-            suggestedMin: -5,
-            ticks: {
-              stepSize: 1
-            }
-          }
-        },
-        plugins: {
-          legend: {
-            position: 'right',
-          },
-        }
-      }
-    });
+    var heatChart = newChart(heatCtx, 'Hiti');
+    heatChart.options.scales.y.suggestedMin = -5;
+
 
     const windCtx = document.getElementById('windChart');
-    var windChart = new Chart(windCtx, {
-      type: 'bar',
-      data: {
-        datasets: [{
-          label: `Vindur`,
-          data: new Array(),
-          borderWidth: 2,
-          borderColor: '#04AA6D',
-          backgroundColor: '#04AA6D'
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            suggestedMax: 20,
-            ticks: {
-              stepSize: 1
+    var windChart = newChart(windCtx, 'Vindur')
+
+    function newChart(ctx, title) {
+      return new Chart(ctx, {
+        type: 'bar',
+        data: {
+          datasets: [{
+            label: title,
+            data: new Array(),
+            borderWidth: 2,
+            borderColor: '#04AA6D',
+            backgroundColor: '#04AA6D'
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              suggestedMax: 20,
+              ticks: {
+                stepSize: 1
+              }
             }
           }
-        },
-        plugins: {
-          legend: {
-            position: 'right',
-          },
         }
-      }
-    });
+      });
 
-    var dayField = document.getElementById("dagur")
+    }
+
+
 
     function RenderForecast(startAt) {
       var casts = this.forecast[startAt];
@@ -170,7 +146,7 @@
       this.heatChart.update();
       this.windChart.update();
 
-      dayField.innerHTML = new Date(casts[0].ftime).toLocaleDateString('is-IS', { weekday: 'short', day: 'numeric', month: 'short' });
+      document.getElementById("dagur").innerHTML = new Date(casts[0].ftime).toLocaleDateString('is-IS', { weekday: 'short', day: 'numeric', month: 'short' });
     }
 
     function stationSelect() {
@@ -224,9 +200,6 @@
     function loadTextForecast() {
     }
 
-
-
-
     ///////////
     // 'API' //
     ///////////
@@ -237,8 +210,6 @@
       const parsed = new window.DOMParser().parseFromString(forecasts, "text/xml")
       return JSON.parse(xml2json(parsed, ""));
     }
-
-
   </script>
 </body>
 
