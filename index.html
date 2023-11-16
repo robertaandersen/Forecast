@@ -156,6 +156,7 @@
 
     loadForecast('1')
     loadTextForecast();
+
     /////////////
     // SERVIES //
     /////////////
@@ -169,7 +170,7 @@
     var currentPos = 0;
 
     function fastForward(step) {
-      if ((currentPos === 0 && step < 0) || currentPos === days.length - 1) {
+      if ((currentPos === 0 && step < 0) || (currentPos === days.length - 1 && step > 0)) {
         return;
       }
       currentPos += step;
